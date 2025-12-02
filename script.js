@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+
     const grid = document.querySelector('#game-board');
     const startButton = document.getElementById('start-game');
     const playerNameDisplay = document.getElementById('player-name');
@@ -50,7 +51,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!playerName) playerName = "Guest";
 
         playerNameDisplay.textContent = "Player: " + playerName;
-
         scoreDisplay.textContent = "Score: 0";
         timerDisplay.textContent = "Time: 0s";
 
@@ -60,46 +60,57 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '';
         cardsWon = [];
 
-        for (let i = 0; i < cardArray.length; i++) {
-            const card = document.createElement('img');
-            card.setAttribute('src', 'images/batmanlogo.png');
-            card.setAttribute('data-id', i);
-            card.style.width = "120px";   // foto boyutları eşitleme
-            card.style.height = "120px";
+        cardArray.forEach((cardData, index) => {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            card.setAttribute('data-id', index);
+
+            card.innerHTML = `
+                <div class="card-inner">
+                    <img src="${cardData.img}" class="card-front">
+                    <img src="images/batmanlogo.png" class="card-back">
+                </div>
+            `;
+
             card.addEventListener('click', flipCard);
             grid.appendChild(card);
-        }
+        });
     }
 
     function flipCard() {
-        let cardId = this.getAttribute('data-id');
+        const card = this;
+        let cardId = card.getAttribute('data-id');
 
-        if (!cardsChosenId.includes(cardId)) {
+        if (!cardsChosenId.includes(cardId) && !card.classList.contains("flip")) {
+            card.classList.add("flip");
+
             cardsChosen.push(cardArray[cardId].name);
             cardsChosenId.push(cardId);
-            this.setAttribute('src', cardArray[cardId].img);
 
             if (cardsChosen.length === 2) {
-                setTimeout(checkForMatch, 500);
+                setTimeout(checkForMatch, 700);
             }
         }
     }
 
     function checkForMatch() {
-        const cards = document.querySelectorAll('#game-board img');
-        const firstCardId = cardsChosenId[0];
-        const secondCardId = cardsChosenId[1];
 
-        if (cardsChosen[0] === cardsChosen[1] && firstCardId !== secondCardId) {
-            cards[firstCardId].style.visibility = 'hidden';
-            cards[secondCardId].style.visibility = 'hidden';
+        const allCards = document.querySelectorAll('.card');
+        const first = cardsChosenId[0];
+        const second = cardsChosenId[1];
 
+        if (cardsChosen[0] === cardsChosen[1] && first !== second) {
+
+            allCards[first].style.visibility = "hidden";
+            allCards[second].style.visibility = "hidden";
             cardsWon.push(cardsChosen);
+
             scoreDisplay.textContent = "Score: " + cardsWon.length;
 
         } else {
-            cards[firstCardId].setAttribute('src', 'images/batmanlogo.png');
-            cards[secondCardId].setAttribute('src', 'images/batmanlogo.png');
+
+            allCards[first].classList.remove("flip");
+            allCards[second].classList.remove("flip");
         }
 
         cardsChosen = [];
@@ -108,7 +119,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cardsWon.length === cardArray.length / 2) {
             stopTimer();
             setTimeout(() => {
-                alert(`${playerName}, tebrikler! Oyunu bitirdin.\nSüre: ${time} saniye`);
+                alert(`${playerName} oyunu ${time} saniyede bitirdi!`);
             }, 300);
         }
     }
