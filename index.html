@@ -1,25 +1,208 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Batman Memory Game</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Memory Game (No Flip)</title>
+<style>
+  body{font-family:Arial,Helvetica,sans-serif;background:#0b1220;color:#eef;margin:20px;text-align:center}
+  h1{color:#ffd700;margin-bottom:8px}
+  #controls{margin:12px 0;display:flex;gap:12px;justify-content:center;align-items:center;flex-wrap:wrap}
+  button{padding:8px 14px;border-radius:8px;border:0;background:#ffd700;color:#000;cursor:pointer}
+  .info{display:flex;gap:12px;justify-content:center;margin-bottom:12px;font-weight:600}
+  #game-board{width:640px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  #game-board img{width:100%;height:140px;object-fit:cover;border-radius:8px;cursor:pointer;background:#222}
+  /* gizlenen kartlar için */
+  .hidden{visibility:hidden}
+  /* küçük ekranlarda daralt */
+  @media(max-width:700px){
+    #game-board{width:94%;grid-template-columns:repeat(3,1fr)}
+    #game-board img{height:110px}
+  }
+</style>
 </head>
 <body>
+  <h1>Memory Game — Flip Kaldırıldı</h1>
 
-    <h1>🃏 Batman Memory Game</h1>
-
+  <div id="controls">
     <button id="start-game">Start Game</button>
+    <button id="restart-game">Restart</button>
+  </div>
 
-    <div class="info-panel">
-        <p id="player-name">Player: -</p>
-        <p id="score">Score: 0</p>
-        <p id="timer">Time: 0s</p>
-    </div>
+  <div class="info">
+    <div id="player-name">Player: -</div>
+    <div id="score">Score: 0</div>
+    <div id="timer">Time: 0s</div>
+  </div>
 
-    <div id="game-board" class="grid"></div>
+  <div id="game-board" aria-live="polite"></div>
 
-    <script src="script.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const board = document.getElementById('game-board');
+  const startBtn = document.getElementById('start-game');
+  const restartBtn = document.getElementById('restart-game');
+  const playerNameEl = document.getElementById('player-name');
+  const scoreEl = document.getElementById('score');
+  const timerEl = document.getElementById('timer');
+
+  // Basit kart dizisi (pair'ler)
+  const cardArray = [
+    {name:'c1', img:'images/joker.png'},
+    {name:'c1', img:'images/joker.png'},
+    {name:'c2', img:'images/batmanred.png'},
+    {name:'c2', img:'images/batmanred.jpg'},
+    {name:'c3', img:'images/bane.png'},
+    {name:'c3', img:'images/bane.png'},
+    {name:'c4', img:'images/catwoman.png'},
+    {name:'c4', img:'images/catwoman.png'},
+    {name:'c5', img:'images/bruce.png'},
+    {name:'c5', img:'images/bruce.png'},
+    {name:'c6', img:'images/penguin.png'},
+    {name:'c6', img:'images/penguin.png'},
+    {name:'c7', img:'images/riddler.png'},
+    {name:'c7', img:'images/riddler.png'},
+    {name:'c8', img:'images/twoface.png'},
+    {name:'c8', img:'images/twoface.png'}
+  ];
+
+  let deck = [];              // oyun için kullanılacak karıştırılmış dizi
+  let chosen = [];            // seçilen kart isimleri
+  let chosenIds = [];         // seçilen index'ler
+  let matchedCount = 0;
+  let score = 0;
+  let timer = null;
+  let seconds = 0;
+  let playerName = 'Guest';
+  let lockBoard = false;      // 2 seçim arasındaki click'leri engellemek için
+
+  // Fisher-Yates shuffle (sağlam)
+  function shuffle(a){
+    for(let i=a.length-1;i>0;i--){
+      const j = Math.floor(Math.random()*(i+1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+  }
+
+  function resetState(){
+    chosen = [];
+    chosenIds = [];
+    matchedCount = 0;
+    score = 0;
+    scoreEl.textContent = 'Score: 0';
+    seconds = 0;
+    timerEl.textContent = 'Time: 0s';
+    clearInterval(timer);
+    lockBoard = false;
+  }
+
+  function startTimer(){
+    clearInterval(timer);
+    seconds = 0;
+    timerEl.textContent = 'Time: 0s';
+    timer = setInterval(()=>{
+      seconds++;
+      timerEl.textContent = 'Time: ' + seconds + 's';
+    },1000);
+  }
+
+  function stopTimer(){
+    clearInterval(timer);
+  }
+
+  function buildBoard(){
+    // deck oluştur ve karıştır
+    deck = cardArray.slice(0); // kopyala
+    shuffle(deck);
+
+    board.innerHTML = '';
+    deck.forEach((c, idx) => {
+      const img = document.createElement('img');
+      img.src = 'images/batmanlogo.png'; // kapalı kart
+      img.dataset.id = idx;
+      img.alt = 'card';
+      img.addEventListener('click', onCardClick);
+      board.appendChild(img);
+    });
+  }
+
+  function onCardClick(e){
+    if(lockBoard) return; // 2 seçim arasında tıklamayı engelle
+    const img = e.currentTarget;
+    const id = Number(img.dataset.id);
+
+    // zaten eşleşmiş veya aynı kart tekrar tıklama engeli
+    if(img.classList.contains('hidden')) return;
+    if(chosenIds.includes(id)) return;
+
+    // kartı aç (basit: src değiştir)
+    img.src = deck[id].img;
+
+    chosen.push(deck[id].name);
+    chosenIds.push(id);
+
+    if(chosen.length === 2){
+      lockBoard = true;
+      setTimeout(checkMatch, 600);
+    }
+  }
+
+  function checkMatch(){
+    const [id1, id2] = chosenIds;
+    const imgs = board.querySelectorAll('img');
+
+    if(deck[id1].name === deck[id2].name && id1 !== id2){
+      // eşleşme
+      imgs[id1].classList.add('hidden');
+      imgs[id2].classList.add('hidden');
+      matchedCount++;
+      score += 10;
+      scoreEl.textContent = 'Score: ' + score;
+    } else {
+      // eşleşme yok, kartları kapa
+      imgs[id1].src = 'images/batmanlogo.png';
+      imgs[id2].src = 'images/batmanlogo.png';
+      score = Math.max(0, score - 2);
+      scoreEl.textContent = 'Score: ' + score;
+    }
+
+    chosen = [];
+    chosenIds = [];
+    lockBoard = false;
+
+    // kazanma kontrolü (toplam pair sayısı = deck.length/2)
+    if(matchedCount === (deck.length/2)){
+      stopTimer();
+      setTimeout(()=>{
+        alert(playerName + ', tebrikler! Oyunu bitirdin.\nSüre: ' + seconds + 's\nSkor: ' + score);
+      }, 300);
+    }
+  }
+
+  // Start game handler
+  function startGame(){
+    const name = prompt('Oyuncu adını gir:', playerName);
+    if(name && name.trim() !== '') playerName = name.trim();
+    playerNameEl.textContent = 'Player: ' + playerName;
+    resetState();
+    buildBoard();
+    startTimer();
+  }
+
+  // Restart handler: aynı oyuncuyla yeniden başla
+  function restartGame(){
+    resetState();
+    buildBoard();
+    startTimer();
+  }
+
+  // event listeners
+  startBtn.addEventListener('click', startGame);
+  restartBtn.addEventListener('click', restartGame);
+
+  // İlk load için board oluştur (opsiyonel, butona basılınca yeniden oluşturulur)
+  buildBoard();
+});
+</script>
 </body>
 </html>
