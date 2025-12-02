@@ -14,17 +14,22 @@ document.addEventListener("DOMContentLoaded", () => {
     let playerName = "";
 
     const cardArray = [
-        { name: "card1", img: "images/joker.png" },
-        { name: "card1", img: "images/joker.png" },
-        { name: "card2", img: "images/batmanred.png" },
-        { name: "card2", img: "images/batmanred.png" },
-        { name: "card3", img: "images/bane.png" },
-        { name: "card3", img: "images/bane.png" },
-        { name: "card4", img: "images/catwoman.png" },
-        { name: "card4", img: "images/catwoman.png" },
-        { name: "card5", img: "images/bruce.png" },
-        { name: "card5", img: "images/bruce.png" },
-    ];
+    { name: "card1", img: "images/joker.png" },
+    { name: "card1", img: "images/joker.png" },
+
+    { name: "card2", img: "images/batmanred.png" },
+    { name: "card2", img: "images/batmanred.png" },
+
+    { name: "card3", img: "images/bane.png" },
+    { name: "card3", img: "images/bane.png" },
+
+    { name: "card4", img: "images/catwoman.png" },
+    { name: "card4", img: "images/catwoman.png" },
+
+    { name: "card5", img: "images/bruce.png" },
+    { name: "card5", img: "images/bruce.png" },
+];
+
 
     function shuffle(array) {
         array.sort(() => 0.5 - Math.random());
